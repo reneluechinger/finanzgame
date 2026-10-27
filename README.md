@@ -63,7 +63,7 @@ Hinweis: Änderungen wirken nur auf dem eigenen Gerät, bis du den neuen Link te
 - Kein Login, keine Namen, keine E-Mail-Adressen
 - Spielstand und Reflexionsantworten bleiben auf dem Gerät. Wird der Browserverlauf gelöscht, sind sie weg
 - In die Bestenliste gehen nur Spitzname, Punkte, Datum, Variante und Endwerte
-- Die PIN schützt den Editor vor Neugier, sie ist kein Sicherheitsmerkmal
+- Die PIN schützt den Editor vor Neugier, sie ist kein Sicherheitsmerkmal. PIN vergessen: Auf dem PIN-Bildschirm «PIN vergessen?» tippen, dann gilt wieder 1234. Die Variante bleibt erhalten.
 
 ## Für Entwicklerinnen und Entwickler
 
