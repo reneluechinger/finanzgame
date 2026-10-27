@@ -8,7 +8,7 @@ function withTimeout(promise) {
 }
 
 export async function submitScore(cfg, entry) {
-  addRun(entry);
+  addRun(entry); // addRun ignoriert denselben Durchgang ein zweites Mal
   if (!cfg.scriptUrl) return { online: false };
   try {
     // text/plain verhindert eine CORS-Vorabanfrage, die Apps Script nicht beantwortet

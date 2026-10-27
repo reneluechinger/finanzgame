@@ -39,7 +39,7 @@ export const pinHash = pin => hash("finanzgame-pin:" + pin);
 export const checkPin = (cfg, pin) => pinHash(pin) === (cfg.pinHash || pinHash("1234"));
 
 // --- Konfiguration ---
-export const loadConfig = () => get("config") || structuredClone(DEFAULT_CONFIG);
+export const loadConfig = () => sanitizeConfig(get("config") || structuredClone(DEFAULT_CONFIG));
 export const saveConfig = cfg => set("config", cfg);
 export const resetConfig = () => remove("config");
 
@@ -54,6 +54,7 @@ export const setNickname = n => set("nickname", n);
 export const loadRuns = () => get("runs", []);
 export function addRun(run) {
   const runs = loadRuns();
+  if (runs.some(r => r.name === run.name && r.variant === run.variant && r.started && r.started === run.started)) return;
   runs.push(run);
   set("runs", runs.slice(-200));
 }
@@ -72,7 +73,9 @@ async function pipe(bytes, stream) {
 }
 
 export async function encodeConfig(cfg) {
-  const bytes = new TextEncoder().encode(JSON.stringify(cfg));
+  // Der PIN-Hash bleibt auf dem Gerät der Lehrperson
+  const { pinHash: _, ...shared } = cfg;
+  const bytes = new TextEncoder().encode(JSON.stringify(shared));
   if ("CompressionStream" in window) {
     try { return "z" + toB64(await pipe(bytes, new CompressionStream("deflate-raw"))); } catch { /* weiter ohne */ }
   }
@@ -82,7 +85,49 @@ export async function encodeConfig(cfg) {
 export async function decodeConfig(code) {
   const kind = code[0], bytes = fromB64(code.slice(1));
   const raw = kind === "z" ? await pipe(bytes, new DecompressionStream("deflate-raw")) : bytes;
-  return JSON.parse(new TextDecoder().decode(raw));
+  return sanitizeConfig(JSON.parse(new TextDecoder().decode(raw)));
+}
+
+// Bringt eine Variante (z.B. aus einem fremden Link) in eine sichere Form:
+// Zahlen werden Zahlen, Farben echte Farbcodes, Listen echte Listen.
+export function sanitizeConfig(cfg) {
+  const c = structuredClone(cfg || {});
+  const n = (x, lo, hi, d) => { const v = Number(x); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+  const str = (x, max = 200) => (x == null ? "" : String(x).slice(0, max));
+  const D = DEFAULT_CONFIG;
+  c.name = str(c.name, 60) || "Standard";
+  c.pinHash = str(c.pinHash, 40);
+  c.scriptUrl = /^https:\/\/script\.google(usercontent)?\.com\//.test(str(c.scriptUrl, 300)) ? str(c.scriptUrl, 300) : "";
+  c.days = Math.round(n(c.days, 1, 56, D.days));
+  c.startMoney = n(c.startMoney, -1000, 100000, D.startMoney);
+  c.moneyTarget = n(c.moneyTarget, 1, 100000, D.moneyTarget);
+  c.pocketMoney = n(c.pocketMoney, 0, 10000, D.pocketMoney);
+  c.interestPercent = n(c.interestPercent, 0, 100, D.interestPercent);
+  c.lowEnergyLimit = n(c.lowEnergyLimit, 0, 100, D.lowEnergyLimit);
+  const effects = e => Object.fromEntries(Object.entries(e && typeof e === "object" ? e : {})
+    .map(([k, v]) => [str(k, 40), n(v, -100, 100, 0)]));
+  c.values = (Array.isArray(c.values) ? c.values : []).map(v => ({
+    ...v, id: str(v.id, 40), name: str(v.name, 40), icon: str(v.icon, 8),
+    color: /^#[0-9a-f]{6}$/i.test(v.color) ? v.color : "#7a6cf0",
+    ...(v.money ? { money: true } : { start: n(v.start, 0, 100, 50) })
+  }));
+  c.drift = { everyDay: effects(c.drift?.everyDay), schoolDay: effects(c.drift?.schoolDay) };
+  c.costs = (Array.isArray(c.costs) ? c.costs : []).map(x => ({ name: str(x.name, 60), amount: n(x.amount, 0, 100000, 0), interval: x.interval === "woche" ? "woche" : "monat" }));
+  c.activities = (Array.isArray(c.activities) ? c.activities : []).map(a => ({
+    ...a, id: str(a.id, 40), name: str(a.name, 60), icon: str(a.icon, 8), money: n(a.money, -100000, 100000, 0),
+    when: (Array.isArray(a.when) ? a.when : []).map(w => str(w, 30)), effects: effects(a.effects),
+    info: str(a.info), lockedInfo: str(a.lockedInfo)
+  }));
+  c.events = (Array.isArray(c.events) ? c.events : []).map(e => ({
+    ...e, id: str(e.id, 40), icon: str(e.icon, 8), text: str(e.text, 300),
+    options: (Array.isArray(e.options) ? e.options : []).map(o => ({
+      ...o, label: str(o.label, 120), money: n(o.money, -100000, 100000, 0), savings: n(o.savings, 0, 100000, 0),
+      effects: effects(o.effects),
+      ...(o.addCost ? { addCost: { name: str(o.addCost.name, 60), amount: n(o.addCost.amount, 0, 100000, 0), interval: o.addCost.interval === "woche" ? "woche" : "monat" } } : {})
+    }))
+  }));
+  c.questions = (Array.isArray(c.questions) ? c.questions : []).map(q => str(q, 300));
+  return c;
 }
 
 // Prüft eine Konfiguration grob, damit Tippfehler das Spiel nicht zerstören
@@ -98,5 +143,13 @@ export function validateConfig(cfg) {
     if (!a.when?.length) errors.push(`«${a.name}» ist keinem Zeitfenster zugeordnet.`);
   }
   for (const e of cfg.events || []) if (!e.options?.length) errors.push(`Ereignis «${e.text}» hat keine Wahlmöglichkeit.`);
+  if (!(cfg.days >= 1)) errors.push("Das Spiel braucht mindestens 1 Tag.");
+  // Jedes Zeitfenster braucht eine Aktivität, die immer geht (gratis, ohne Bedingung)
+  const names = { "werktag-nachmittag": "Werktag Nachmittag", "werktag-abend": "Werktag Abend", "wochenende-morgen": "Wochenende Morgen", "wochenende-nachmittag": "Wochenende Nachmittag", "wochenende-abend": "Wochenende Abend" };
+  for (const [k, label] of Object.entries(names)) {
+    if (!(cfg.activities || []).some(a => a.when?.includes(k) && (Number(a.money) || 0) >= 0 && !a.requires && !a.once)) {
+      errors.push(`Für «${label}» braucht es mindestens eine Gratis-Aktivität ohne Bedingung.`);
+    }
+  }
   return errors;
 }

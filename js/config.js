@@ -32,7 +32,7 @@ export const DEFAULT_CONFIG = {
       effects: { zufriedenheit: -3, wertstiftung: 3, energie: -8 } },
     { id: "nachhilfe", name: "Nachhilfe geben", icon: "📚", when: ["werktag-nachmittag", "werktag-abend", "wochenende-nachmittag"], money: 20,
       effects: { zufriedenheit: 2, wertstiftung: 7, energie: -7, beziehungen: 2 } },
-    { id: "garten", name: "Gartenhilfe bei Nachbarn", icon: "🌱", when: ["wochenende-morgen", "wochenende-nachmittag"], money: 20,
+    { id: "garten", name: "Gartenhilfe in der Nachbarschaft", icon: "🌱", when: ["wochenende-morgen", "wochenende-nachmittag"], money: 20,
       effects: { wertstiftung: 5, energie: -7, beziehungen: 3 } },
     { id: "babysitterkurs", name: "Babysitter-Kurs", icon: "🩹", when: ["wochenende-morgen", "wochenende-nachmittag"], money: -40,
       effects: { wertstiftung: 3, energie: -4 }, grants: { flag: "babysitter", delay: "nextWeek" }, once: true,
@@ -48,7 +48,7 @@ export const DEFAULT_CONFIG = {
     { id: "lernen", name: "Für die Schule lernen", icon: "📖", when: ["werktag-nachmittag", "werktag-abend", "wochenende-nachmittag"], money: 0,
       effects: { zufriedenheit: 3, energie: -4 }, grants: { flag: "vorbereitet", delay: "now", duration: 4 },
       info: "Du bist ein paar Tage gut vorbereitet." },
-    { id: "freunde", name: "Freunde treffen", icon: "🍕", when: ["werktag-nachmittag", "werktag-abend", "wochenende-nachmittag", "wochenende-abend"], money: -10,
+    { id: "freunde", name: "Freundeskreis treffen", icon: "🍕", when: ["werktag-nachmittag", "werktag-abend", "wochenende-nachmittag", "wochenende-abend"], money: -10,
       effects: { zufriedenheit: 6, beziehungen: 8 } },
     { id: "sport", name: "Sport im Verein", icon: "⚽", when: ["werktag-nachmittag", "werktag-abend", "wochenende-morgen"], money: 0,
       effects: { zufriedenheit: 4, energie: 3, beziehungen: 3 } },
@@ -58,7 +58,7 @@ export const DEFAULT_CONFIG = {
       effects: { zufriedenheit: 2, energie: 10 } },
     { id: "shoppen", name: "Shoppen", icon: "🛍️", when: ["werktag-nachmittag", "wochenende-nachmittag"], money: -30,
       effects: { zufriedenheit: 8 } },
-    { id: "kino", name: "Kino mit Freunden", icon: "🎬", when: ["werktag-abend", "wochenende-nachmittag", "wochenende-abend"], money: -18,
+    { id: "kino", name: "Kino mit dem Freundeskreis", icon: "🎬", when: ["werktag-abend", "wochenende-nachmittag", "wochenende-abend"], money: -18,
       effects: { zufriedenheit: 6, beziehungen: 5 } }
   ],
   events: [
@@ -68,7 +68,7 @@ export const DEFAULT_CONFIG = {
     { id: "hund", icon: "🐕", text: "Die Nachbarin fragt, ob du heute ihren Hund ausführst.", options: [
       { label: "Klar, mache ich (Fr. 15)", money: 15, effects: { wertstiftung: 5, energie: -4 } },
       { label: "Heute passt es nicht", effects: {} } ] },
-    { id: "geburtstag", icon: "🎁", text: "Eine Freundin hat Geburtstag.", options: [
+    { id: "geburtstag", icon: "🎁", text: "Jemand aus deinem Freundeskreis hat Geburtstag.", options: [
       { label: "Geschenk kaufen (Fr. 20)", money: -20, effects: { beziehungen: 6 } },
       { label: "Selbst etwas basteln", effects: { beziehungen: 5, energie: -3, wertstiftung: 2 } } ] },
     { id: "sneaker", icon: "👟", text: "Sale! Die Sneaker, die du schon lange willst, kosten nur Fr. 80.", options: [
@@ -82,7 +82,7 @@ export const DEFAULT_CONFIG = {
     { id: "grosi", icon: "💌", text: "Dein Grosi schickt dir Fr. 50.", options: [
       { label: "Aufs Sparkonto legen", savings: 50 },
       { label: "Behalten und ausgeben", money: 50, effects: { zufriedenheit: 3 } } ] },
-    { id: "mathe", icon: "🧮", text: "Ein Kollege aus der Klasse versteht die Mathe-Aufgaben nicht.", options: [
+    { id: "mathe", icon: "🧮", text: "Jemand aus deiner Klasse versteht die Mathe-Aufgaben nicht.", options: [
       { label: "Gratis helfen", effects: { wertstiftung: 6, beziehungen: 4, energie: -4 } },
       { label: "Helfen für Fr. 10", money: 10, effects: { wertstiftung: 3, beziehungen: -2, energie: -4 } } ] },
     { id: "erkaeltung", icon: "🤧", text: "Du bist erkältet.", options: [

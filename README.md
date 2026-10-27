@@ -38,6 +38,8 @@ Ohne diesen Schritt zeigt jedes Gerät nur die eigenen Durchgänge.
 4. **Bereitstellen → Neue Bereitstellung**. Beim Zahnrad «Web-App» wählen.
    - Ausführen als: **Ich**
    - Zugriff: **Jeder**
+
+   Aus Sicherheitsgründen akzeptiert das Spiel nur Adressen, die mit `https://script.google.com/` beginnen.
 5. **Bereitstellen** klicken, Google-Konto autorisieren. Die angezeigte **Web-App-URL** kopieren (endet auf `/exec`).
 6. Im Spiel unten auf **Für Lehrpersonen** tippen, PIN eingeben, Reiter **Allgemein**, URL bei «Bestenliste» einfügen, **Speichern**.
 7. Reiter **Teilen → Link erzeugen** und diesen Link der Klasse geben. Nur wer den Link öffnet, schreibt in die gemeinsame Liste.

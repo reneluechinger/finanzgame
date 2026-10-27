@@ -30,7 +30,10 @@ export function scoreOf(values) {
   const gap = Math.max(...arr) - Math.min(...arr);
   const zeros = arr.filter(v => v <= 0).length;
   const score = clamp(Math.round(avg - 0.5 * gap - 5 * zeros));
-  return { score, avg: Math.round(avg), gap: Math.round(gap * 0.5), zeros };
+  const avgR = Math.round(avg);
+  // Angezeigter Abzug so, dass «Ø − Ungleichgewicht − Malus = Punkte» aufgeht
+  const shownGap = score > 0 ? avgR - score - 5 * zeros : Math.round(gap * 0.5);
+  return { score, avg: avgR, gap: shownGap, zeros };
 }
 
 export function newGame(cfg, nickname, variant) {
@@ -85,7 +88,7 @@ export function startDay(cfg, state, rng = Math.random) {
       state.log.push(`Taschengeld: +Fr. ${cfg.pocketMoney}`);
     }
   }
-  for (const c of [...cfg.costs, ...state.extraCosts]) {
+  for (const c of [...(cfg.costs || []), ...state.extraCosts]) {
     const due = c.interval === "woche" ? wd === 0 : (state.day - 1) % 28 === 0 || (c.added && c.added === state.day);
     if (due) {
       pay(state, c.amount);
@@ -96,7 +99,7 @@ export function startDay(cfg, state, rng = Math.random) {
   if (state.day > 1 && rng() < 0.5) {
     // Ereignisse derselben Gruppe (z.B. zwei Varianten des Mathetests) kommen nur einmal vor
     const seenGroups = cfg.events.filter(e => e.group && state.seenEvents.includes(e.id)).map(e => e.group);
-    const pool = cfg.events.filter(e => !state.seenEvents.includes(e.id) && !(e.group && seenGroups.includes(e.group)) && conditionOk(state, e.condition));
+    const pool = (cfg.events || []).filter(e => !state.seenEvents.includes(e.id) && !(e.group && seenGroups.includes(e.group)) && conditionOk(state, e.condition));
     if (pool.length) state.event = pool[Math.floor(rng() * pool.length)].id;
   }
 }
@@ -116,10 +119,23 @@ function pay(state, amount) {
   }
 }
 
+// Welche Wahlmöglichkeiten eines Ereignisses bezahlbar sind (Konto + Sparkonto).
+// Ist keine bezahlbar, bleibt die günstigste wählbar.
+export function eventOptionsAffordable(state, ev) {
+  const cash = state.konto + state.spar;
+  const ok = ev.options.map(o => !(o.money < 0) || cash + o.money >= 0);
+  if (!ok.some(Boolean)) {
+    const cheapest = ev.options.reduce((best, o, i) => ((o.money || 0) > (ev.options[best].money || 0) ? i : best), 0);
+    ok[cheapest] = true;
+  }
+  return ok;
+}
+
 export function chooseEventOption(cfg, state, index) {
   const ev = cfg.events.find(e => e.id === state.event);
   if (!ev) return;
   const opt = ev.options[index];
+  if (!opt || !eventOptionsAffordable(state, ev)[index]) return;
   if (opt.money) opt.money < 0 ? pay(state, -opt.money) : (state.konto = round1(state.konto + opt.money));
   if (opt.savings) state.spar = round1(state.spar + opt.savings);
   if (opt.addCost) state.extraCosts.push({ ...opt.addCost, added: state.day + 1 });

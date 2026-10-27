@@ -21,6 +21,7 @@ async function init() {
     try {
       const shared = await S.decodeConfig(m[1]);
       if (S.validateConfig(shared).length) throw new Error("ungültig");
+      shared.pinHash = cfg.pinHash; // eigene PIN auf diesem Gerät behalten
       cfg = shared;
       S.saveConfig(cfg);
     } catch {
@@ -37,21 +38,29 @@ function route() {
   if (location.hash === "#lehrperson") return showEditor();
   showStart();
 }
-window.addEventListener("hashchange", route);
+// Ein Varianten-Link im bereits offenen Tab lädt die Variante neu
+window.addEventListener("hashchange", () => (location.hash.startsWith("#v=") ? init() : route()));
 
 function save() { if (state) S.saveGame(state); }
 
 function showStart() {
   modal = null;
   const saved = state && state.status !== "done" ? state : null;
+  const done = state && state.status === "done" ? state : null;
   const nick = saved?.nickname || S.lastNickname();
+  const valueNames = cfg.values.map(v => v.name);
+  const valueList = valueNames.length > 1 ? valueNames.slice(0, -1).join(", ") + " und " + valueNames.at(-1) : valueNames.join("");
   app.innerHTML = `
   <div class="screen start">
     <h1 class="logo big">FinanzGame</h1>
-    <p class="lead">Ein Monat, deine Entscheidungen. Halte Geld, Zufriedenheit, Wertstiftung und mehr im Gleichgewicht.</p>
+    <p class="lead">Deine Entscheidungen, Tag für Tag. Halte ${esc(valueList)} im Gleichgewicht.</p>
     ${cfg.name !== "Standard" ? `<p class="variant sans">Variante: <b>${esc(cfg.name)}</b></p>` : ""}
     <div class="card start-card sans">
-      ${saved ? `
+      ${done ? `
+        <p>Der Monat von <b>${esc(done.nickname)}</b> ist fertig: ${done.history.at(-1)?.score ?? 0} Punkte.</p>
+        <button class="btn primary" data-a="continue">Auswertung ansehen →</button>
+        <button class="btn ghost" data-a="new-confirm">Neuer Monat</button>
+      ` : saved ? `
         <p>Gespeichertes Spiel von <b>${esc(saved.nickname)}</b>: Woche ${E.weekOf(Math.min(saved.day, cfg.days))}, Tag ${Math.min(saved.day, cfg.days)} von ${cfg.days}</p>
         <button class="btn primary" data-a="continue">Weiterspielen →</button>
         <button class="btn ghost" data-a="new-confirm">Neu beginnen</button>
@@ -91,7 +100,7 @@ function showGame() {
     <header class="top">
       <button class="logo linkish" data-a="menu" aria-label="Menü">FinanzGame ☰</button>
       <div class="meta sans">
-        <span>Woche ${E.weekOf(day)} · <b>${E.DAY_NAMES[E.weekdayIndex(day)]}</b> · Tag ${day}/${cfg.days}</span>
+        <span>Woche ${E.weekOf(day)} · <b>${E.DAY_NAMES[E.weekdayIndex(day)]}</b> · Tag ${day}/${esc(cfg.days)}</span>
         <button class="money ${state.konto < 0 ? "neg" : ""}" data-a="spar">Konto <b>${fr(state.konto)}</b> · Sparkonto ${fr(state.spar)}</button>
       </div>
     </header>
@@ -151,18 +160,19 @@ function renderModal() {
   if (modal === "event") {
     const ev = cfg.events.find(e => e.id === state.event);
     if (!ev) { modal = null; return ""; }
+    const affordable = E.eventOptionsAffordable(state, ev);
     return `<div class="overlay"><div class="dialog">
       <div class="ev-icon">${esc(ev.icon)}</div>
       <p class="ev-text">${esc(ev.text)}</p>
       <div class="ev-opts sans">${ev.options.map((o, i) => `
-        <button class="btn opt" data-a="ev" data-i="${i}"><b>${esc(o.label)}</b><small>${optText(o)}</small></button>`).join("")}</div>
+        <button class="btn opt" data-a="ev" data-i="${i}" ${affordable[i] ? "" : "disabled"}><b>${esc(o.label)}</b><small>${optText(o)}${affordable[i] ? "" : " · Dafür reicht dein Geld nicht"}</small></button>`).join("")}</div>
     </div></div>`;
   }
   if (modal === "spar") {
     return `<div class="overlay"><div class="dialog sans">
       <h2>💰 Sparkonto</h2>
       <p>Konto: <b>${fr(state.konto)}</b> · Sparkonto: <b>${fr(state.spar)}</b></p>
-      <p class="small">Jeden Montag gibt es ${cfg.interestPercent} % Zins auf das Sparkonto (Spiel-Zins, auf echten Konten ist er viel tiefer). Geld auf dem Sparkonto kannst du nicht für Aktivitäten ausgeben, es hilft aber bei Notfällen.</p>
+      <p class="small">Jeden Montag gibt es ${esc(cfg.interestPercent)} % Zins auf das Sparkonto (Spiel-Zins, auf echten Konten ist er viel tiefer). Geld auf dem Sparkonto kannst du nicht für Aktivitäten ausgeben, es hilft aber bei Notfällen.</p>
       <div class="row">${[10, 20, 50].map(n => `<button class="btn ghost" data-a="sparen" data-n="${n}">+${n} sparen</button>`).join("")}</div>
       <div class="row">${[10, 20, 50].map(n => `<button class="btn ghost" data-a="sparen" data-n="${-n}">${n} zurückholen</button>`).join("")}</div>
       <button class="btn primary" data-a="close">Fertig</button>
@@ -306,17 +316,18 @@ async function showBoard() {
 // ---------- Anleitung ----------
 function showHelp() {
   const backTo = state && state.status === "day" ? "continue" : "home";
+  const wert = cfg.values.find(v => v.id === "wertstiftung");
   app.innerHTML = `
   <div class="screen help">
     <h1 class="logo">So funktioniert's</h1>
     <div class="card sans helptext">
-      <p><b>Ziel:</b> Du spielst einen Monat (${cfg.days} Tage) im Leben einer jugendlichen Person. Halte alle Werte möglichst hoch und im Gleichgewicht:</p>
+      <p><b>Ziel:</b> Du spielst ${esc(cfg.days)} Tage im Leben einer jugendlichen Person. Halte alle Werte möglichst hoch und im Gleichgewicht:</p>
       <ul>${cfg.values.map(v => `<li>${esc(v.icon)} <b>${esc(v.name)}</b>${v.money ? ` (Konto + Sparkonto, ${fr(cfg.moneyTarget)} entsprechen 100)` : ""}</li>`).join("")}</ul>
       <p><b>Jeden Tag</b> wählst du, was du in deiner freien Zeit machst: an Schultagen am Nachmittag und am Abend, am Wochenende auch am Morgen. Tippe auf ein Zeitfenster, um deine Wahl zu ändern. Die gestrichelte Linie zeigt dir, wie sich deine Werte verändern.</p>
-      <p><b>Wertstiftung</b> bedeutet: Du schaffst Nutzen für andere. Manchmal wirst du dafür bezahlt (Nachhilfe, Babysitten), manchmal nicht (Tierheim, Familie).</p>
+      ${wert ? `<p><b>${esc(wert.name)}</b> bedeutet: Du schaffst Nutzen für andere. Manchmal wirst du dafür bezahlt, manchmal nicht.</p>` : ""}
       <p><b>Geld:</b> Jeden Montag gibt es ${fr(cfg.pocketMoney)} Taschengeld. Es gibt laufende Kosten. Auf dem Sparkonto gibt es Zins. Manche Dinge zahlen sich erst später aus, z.B. ein Kurs.</p>
       <p><b>Ereignisse:</b> Ab und zu passiert etwas Unerwartetes, und du entscheidest, wie du reagierst.</p>
-      <p><b>Energie:</b> Ist sie unter ${cfg.lowEnergyLimit}, wirken gute Effekte nur halb. Hohe Werte steigen langsamer.</p>
+      <p><b>Energie:</b> Ist sie unter ${esc(cfg.lowEnergyLimit)}, wirken gute Effekte nur halb. Hohe Werte steigen langsamer.</p>
       <p><b>Punkte</b> = Durchschnitt aller Werte − halber Abstand zwischen höchstem und tiefstem Wert. Für jeden Wert auf 0 gibt es 5 Punkte Abzug. Wer nur auf einen Wert setzt, verliert.</p>
       <p><b>Nach jeder Woche</b> gibt es einen Rückblick. Dort kannst du speichern und später weiterspielen. Alles wird nur auf diesem Gerät gespeichert.</p>
     </div>
@@ -336,7 +347,7 @@ function showEditor() {
     return;
   }
   renderEditor(app, cfg, newCfg => {
-    cfg = newCfg;
+    cfg = S.sanitizeConfig(newCfg);
     S.saveConfig(cfg);
     variant = S.variantId(cfg);
     state = S.loadGame(variant);
@@ -404,13 +415,14 @@ app.addEventListener("click", async ev => {
       el.disabled = true;
       const msg = document.getElementById("submit-msg");
       msg.textContent = "Wird gesendet …";
-      const res = await submitScore(cfg, { name: state.nickname, score: last.score, variant, date: new Date().toISOString(), values: last.values });
-      state.submitted = true;
+      const res = await submitScore(cfg, { name: state.nickname, score: last.score, variant, date: new Date().toISOString(), started: state.started, values: last.values });
+      // Nur als erledigt markieren, wenn der Eintrag angekommen ist (oder es nur die lokale Liste gibt)
+      if (res.online || !cfg.scriptUrl) state.submitted = true;
       save();
       showFinal();
       document.getElementById("submit-msg").textContent = res.online
         ? "Eingetragen in die gemeinsame Bestenliste."
-        : cfg.scriptUrl ? "Keine Verbindung: Nur auf diesem Gerät gespeichert." : "Auf diesem Gerät gespeichert.";
+        : cfg.scriptUrl ? "Keine Verbindung zur gemeinsamen Liste. Auf diesem Gerät gespeichert, du kannst es später nochmals versuchen." : "Auf diesem Gerät gespeichert.";
       break;
     }
     case "pin": {
@@ -420,6 +432,11 @@ app.addEventListener("click", async ev => {
       break;
     }
   }
+});
+
+// Reflexionsantworten sofort sichern, damit beim Neuladen nichts verloren geht
+app.addEventListener("input", ev => {
+  if (ev.target.id === "refl" && state) { saveReflection(); save(); }
 });
 
 app.addEventListener("keydown", ev => {

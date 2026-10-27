@@ -18,7 +18,7 @@ export function radar(valuesCfg, current, preview = null) {
     const anchor = Math.abs(lx - cx) < 10 ? "middle" : lx > cx ? "start" : "end";
     const low = (current[v.id] ?? 0) < 20;
     s += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--grid)"/>`;
-    s += `<text x="${lx}" y="${ly - 4}" text-anchor="${anchor}" class="rl${low ? " low" : ""}">${v.icon || ""} ${esc(v.name)}</text>`;
+    s += `<text x="${lx}" y="${ly - 4}" text-anchor="${anchor}" class="rl${low ? " low" : ""}">${esc(v.icon)} ${esc(v.name)}</text>`;
     s += `<text x="${lx}" y="${ly + 13}" text-anchor="${anchor}" class="rv${low ? " low" : ""}">${current[v.id] ?? 0}</text>`;
   });
   if (preview) s += `<polygon points="${poly(preview)}" fill="none" stroke="var(--acc)" stroke-width="2.5" stroke-dasharray="7 5"/>`;

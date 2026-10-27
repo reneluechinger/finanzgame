@@ -54,3 +54,13 @@ test("Taschengeld und Kosten am Montag", () => {
   const st = E.newGame(cfg, "t", "x");
   assert.equal(st.konto, cfg.startMoney + cfg.pocketMoney - 10 - 8);
 });
+
+test("Ereignis-Wahl ohne Deckung ist gesperrt", () => {
+  const st = E.newGame(cfg, "t", "x");
+  st.konto = 30; st.spar = 0;
+  const ev = cfg.events.find(e => e.id === "sneaker");
+  assert.deepEqual(E.eventOptionsAffordable(st, ev), [false, true]);
+  st.event = "sneaker";
+  E.chooseEventOption(cfg, st, 0);
+  assert.equal(st.konto, 30); // nichts gekauft
+});
