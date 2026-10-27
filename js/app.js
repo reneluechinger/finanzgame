@@ -340,9 +340,10 @@ function showEditor() {
   if (!unlockedEditor) {
     app.innerHTML = `<div class="screen start"><h1 class="logo">Für Lehrpersonen</h1>
       <div class="card start-card sans"><label for="pin">PIN eingeben</label>
-      <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+      <input id="pin" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button class="btn primary" data-a="pin">Öffnen</button>
       <p class="small">Standard-PIN beim ersten Mal: 1234. Bitte im Editor ändern.</p>
+      <button class="btn ghost" data-a="pin-reset">PIN vergessen?</button>
       <button class="btn ghost" data-a="home">Zurück zum Spiel</button></div></div>`;
     return;
   }
@@ -425,8 +426,15 @@ app.addEventListener("click", async ev => {
         : cfg.scriptUrl ? "Keine Verbindung zur gemeinsamen Liste. Auf diesem Gerät gespeichert, du kannst es später nochmals versuchen." : "Auf diesem Gerät gespeichert.";
       break;
     }
+    case "pin-reset":
+      if (confirm("PIN auf 1234 zurücksetzen? Deine Variante bleibt erhalten. Die PIN gilt nur auf diesem Gerät.")) {
+        cfg.pinHash = "";
+        S.saveConfig(cfg);
+        alert("Die PIN ist wieder 1234.");
+      }
+      break;
     case "pin": {
-      const pin = document.getElementById("pin").value;
+      const pin = document.getElementById("pin").value.trim();
       if (S.checkPin(cfg, pin)) { unlockedEditor = true; showEditor(); }
       else alert("Falsche PIN.");
       break;

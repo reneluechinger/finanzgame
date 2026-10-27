@@ -69,7 +69,7 @@ function body() {
     </section>
     <section class="card">
       <h2>PIN ändern</h2>
-      <label class="f"><span>Neue PIN</span><input id="newpin" type="password" inputmode="numeric" autocomplete="new-password"></label>
+      <label class="f"><span>Neue PIN</span><input id="newpin" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
       <button class="btn ghost" data-e="pin">PIN setzen</button>
     </section>`;
 
