@@ -29,10 +29,29 @@ export function hash(str) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
-export function variantId(cfg) {
+// Frühere Berechnung der Varianten-ID (aus dem Inhalt). Wird nur noch einmal
+// verwendet, um älteren Varianten ihre ID dauerhaft mitzugeben.
+function legacyVariantId(cfg) {
   // PIN und Bestenlisten-URL gehören nicht zur Spielvariante
   const { pinHash, scriptUrl, ...rest } = cfg;
   return hash(JSON.stringify(rest)).slice(0, 6);
+}
+
+// Die ID bleibt gleich, auch wenn die Lehrperson die Variante später anpasst.
+// So bleiben Spielstände und Bestenliste erhalten.
+export const variantId = cfg => cfg.vid || legacyVariantId(cfg);
+
+export const newVariantId = () => Math.random().toString(36).slice(2, 8);
+
+// --- Herkunft der Variante: über einen Link geöffnet (Lernende) ---
+export const setFromLink = v => set("fromLink", !!v);
+// Geräte, die vor diesem Update eine Klassen-Variante gespeichert haben, gelten als Geräte von Lernenden.
+// Auf dem eigenen Gerät macht das Speichern im Editor den Zugang wieder sichtbar.
+export function isFromLink() {
+  const v = get("fromLink", null);
+  if (v !== null) return v;
+  const stored = get("config");
+  return !!stored && stored.vid !== "std" && !!stored.scriptUrl;
 }
 
 export const pinHash = pin => hash("finanzgame-pin:" + pin);
@@ -74,7 +93,8 @@ async function pipe(bytes, stream) {
 
 export async function encodeConfig(cfg) {
   // Der PIN-Hash bleibt auf dem Gerät der Lehrperson
-  const { pinHash: _, ...shared } = cfg;
+  const { pinHash: _, ...full } = cfg;
+  const shared = compactDefaults(full);
   const bytes = new TextEncoder().encode(JSON.stringify(shared));
   if ("CompressionStream" in window) {
     try { return "z" + toB64(await pipe(bytes, new CompressionStream("deflate-raw"))); } catch { /* weiter ohne */ }
@@ -85,7 +105,30 @@ export async function encodeConfig(cfg) {
 export async function decodeConfig(code) {
   const kind = code[0], bytes = fromB64(code.slice(1));
   const raw = kind === "z" ? await pipe(bytes, new DecompressionStream("deflate-raw")) : bytes;
-  return sanitizeConfig(JSON.parse(new TextDecoder().decode(raw)));
+  return sanitizeConfig(expandDefaults(JSON.parse(new TextDecoder().decode(raw))));
+}
+
+// Unveränderte Standard-Inhalte stehen im Link nur als ID. Das hält den Link kurz.
+function defaultsById(key) {
+  return new Map(sanitizeConfig(structuredClone(DEFAULT_CONFIG))[key].map(x => [x.id, x]));
+}
+function compactDefaults(cfg) {
+  // Vergleich in bereinigter Form, damit gleiche Einträge auch gleich aussehen
+  const norm = sanitizeConfig(structuredClone(cfg));
+  const out = { ...norm };
+  for (const key of ["activities", "events"]) {
+    const defs = defaultsById(key);
+    out[key] = norm[key].map(x => (defs.has(x.id) && JSON.stringify(defs.get(x.id)) === JSON.stringify(x) ? x.id : x));
+  }
+  return out;
+}
+function expandDefaults(cfg) {
+  for (const key of ["activities", "events"]) {
+    if (!Array.isArray(cfg[key])) continue;
+    const defs = defaultsById(key);
+    cfg[key] = cfg[key].map(x => (typeof x === "string" ? structuredClone(defs.get(x)) : x)).filter(Boolean);
+  }
+  return cfg;
 }
 
 // Bringt eine Variante (z.B. aus einem fremden Link) in eine sichere Form:
@@ -127,6 +170,26 @@ export function sanitizeConfig(cfg) {
     }))
   }));
   c.questions = (Array.isArray(c.questions) ? c.questions : []).map(q => str(q, 300));
+  // Ältere Varianten bekommen ihre bisherige ID fest mit, bevor neue Felder dazukommen
+  if (!c.vid) c.vid = legacyVariantId(c);
+  c.vid = str(c.vid, 12).replace(/[^a-z0-9]/g, "") || "std";
+  c.offerCount = Math.round(n(c.offerCount, 0, 50, D.offerCount));
+  return migrateContent(c);
+}
+
+// Neue Standard-Inhalte in ältere Varianten übernehmen (bestehende Einträge bleiben, wie sie sind)
+function migrateContent(c) {
+  const target = DEFAULT_CONFIG.contentVersion;
+  if ((c.contentVersion || 1) >= target) return c;
+  for (const key of ["activities", "events"]) {
+    const have = new Set(c[key].map(x => x.id));
+    for (const d of DEFAULT_CONFIG[key]) {
+      const existing = c[key].find(x => x.id === d.id);
+      if (existing && d.core) existing.core = true;
+      if (!have.has(d.id)) c[key].push(structuredClone(d));
+    }
+  }
+  c.contentVersion = target;
   return c;
 }
 

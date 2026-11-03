@@ -64,3 +64,37 @@ test("Ereignis-Wahl ohne Deckung ist gesperrt", () => {
   E.chooseEventOption(cfg, st, 0);
   assert.equal(st.konto, 30); // nichts gekauft
 });
+
+test("Pro Zeitfenster 8 Aktivitäten, gleich beim Neuladen, Ausruhen immer dabei", () => {
+  const st = E.newGame(cfg, "t", "x");
+  for (let day = 1; day <= 28; day++) {
+    st.day = day;
+    for (const slot of E.slotsFor(day)) {
+      const a = E.offeredActivities(cfg, st, slot);
+      assert.ok(a.length >= 8 && a.length <= 9, `Tag ${day} ${slot}: ${a.length}`);
+      assert.deepEqual(a.map(x => x.id), E.offeredActivities(cfg, st, slot).map(x => x.id));
+      assert.ok(a.some(x => x.id === "ausruhen"));
+    }
+  }
+});
+
+test("Alle 200 Aktivitäten und 200 Ereignisse sind gültig", () => {
+  assert.equal(cfg.activities.length, 200);
+  assert.equal(cfg.events.length, 200);
+  assert.equal(new Set(cfg.activities.map(a => a.id)).size, 200);
+  assert.equal(new Set(cfg.events.map(e => e.id)).size, 200);
+  const flags = new Set(cfg.activities.filter(a => a.grants).map(a => a.grants.flag));
+  for (const a of cfg.activities) if (a.requires) assert.ok(flags.has(a.requires), a.id);
+});
+
+test("Die Auswahl bleibt gleich, wenn man etwas wählt", () => {
+  const st = E.newGame(cfg, "t", "x");
+  for (let day = 1; day <= 28; day++) {
+    st.day = day; st.plan = {};
+    for (const slot of E.slotsFor(day)) {
+      const before = E.offeredActivities(cfg, st, slot).map(a => a.id);
+      st.plan[slot] = before.at(-1);
+      assert.deepEqual(E.offeredActivities(cfg, st, slot).map(a => a.id), before);
+    }
+  }
+});

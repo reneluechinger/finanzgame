@@ -12,7 +12,7 @@ function sheet_() {
   let sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
-    sh.appendRow(["Datum", "Spitzname", "Punkte", "Variante", "Endwerte"]);
+    sh.appendRow(["Datum", "Spitzname", "Punkte", "Variante", "Endwerte", "Durchgang"]);
     sh.setFrozenRows(1);
   }
   return sh;
@@ -43,11 +43,19 @@ function doPost(e) {
     if (/^[=+\-@]/.test(name)) name = "'" + name;
     const score = Math.round(Number(d.score));
     const variant = String(d.variant || "").slice(0, 12);
+    // Kennung des Durchgangs: derselbe Monat wird nur einmal eingetragen
+    // Mit Vorsatz gespeichert, damit Google Sheets den Text nicht in ein Datum umwandelt
+    const run = d.started ? "run:" + String(d.started).slice(0, 40) : "";
     if (!name || !(score >= 0 && score <= 100)) return json_({ ok: false, error: "Ungültiger Eintrag" });
     const lock = LockService.getScriptLock();
     lock.waitLock(5000);
     try {
-      sheet_().appendRow([new Date(), name, score, variant, JSON.stringify(d.values || {})]);
+      const sh = sheet_();
+      if (run) {
+        const runs = sh.getDataRange().getValues().slice(1).map(r => String(r[5] || ""));
+        if (runs.includes(run)) return json_({ ok: true, duplicate: true });
+      }
+      sh.appendRow([new Date(), name, score, variant, JSON.stringify(d.values || {}), run]);
     } finally {
       lock.releaseLock();
     }

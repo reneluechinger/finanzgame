@@ -12,15 +12,15 @@ Kernidee: Geld ist oft die Folge von Nutzen, den man für andere schafft. Wer nu
 ## So läuft ein Spiel
 
 1. Spitzname eingeben (kein echter Name)
-2. Jeden Tag: an Schultagen Nachmittag und Abend wählen, am Wochenende zusätzlich den Morgen
+2. Jeden Tag: an Schultagen Nachmittag und Abend wählen, am Wochenende zusätzlich den Morgen. Pro Zeitfenster stehen 8 Aktivitäten zur Auswahl, die jeden Tag wechseln (insgesamt 200)
 3. Die gestrichelte Linie im Fünfeck zeigt, wie sich die Werte nach dem Tag verändern
-4. Etwa an jedem zweiten Tag passiert ein Ereignis mit einer Entscheidung
+4. Etwa an jedem zweiten Tag passiert ein Ereignis mit einer Entscheidung (200 verschiedene, keines kommt im Monat zweimal)
 5. Nach jeder Woche: Rückblick mit Verlauf und einer Reflexionsfrage. Hier kann man speichern und später weiterspielen
-6. Nach 28 Tagen: Monatsauswertung, druckbar oder als PDF speicherbar, Eintrag in die Bestenliste
+6. Nach 28 Tagen: Monatsauswertung, druckbar oder als PDF speicherbar. Der Eintrag in die Bestenliste passiert automatisch. Klappt die Verbindung nicht, erscheint der Knopf «Nochmals versuchen»
 
 **Punkte** = Durchschnitt aller Werte − halber Abstand zwischen höchstem und tiefstem Wert. Für jeden Wert auf 0 gibt es 5 Punkte Abzug.
 
-Testläufe mit der Standard-Variante: Ausgewogenes Spiel erreicht etwa 75–80 Punkte, Spiel nur auf Geld oder nur auf Spass unter 10 Punkte.
+Testläufe mit der Standard-Variante: Ausgewogenes Spiel erreicht etwa 80 Punkte, zufälliges Spiel etwa 27, Spiel nur auf Geld oder nur auf Spass unter 20 Punkte.
 
 ## Schritt 1: Spiel online stellen (GitHub Pages)
 
@@ -42,19 +42,22 @@ Ohne diesen Schritt zeigt jedes Gerät nur die eigenen Durchgänge.
    Aus Sicherheitsgründen akzeptiert das Spiel nur Adressen, die mit `https://script.google.com/` beginnen.
 5. **Bereitstellen** klicken, Google-Konto autorisieren. Die angezeigte **Web-App-URL** kopieren (endet auf `/exec`).
 6. Im Spiel unten auf **Für Lehrpersonen** tippen, PIN eingeben, Reiter **Allgemein**, URL bei «Bestenliste» einfügen, **Speichern**.
-7. Reiter **Teilen → Link erzeugen** und diesen Link der Klasse geben. Nur wer den Link öffnet, schreibt in die gemeinsame Liste.
+7. Reiter **Teilen → Link erzeugen** und diesen Link der Klasse geben. Nur wer den Link mindestens einmal öffnet, schreibt in die gemeinsame Liste. Wer nur die normale Adresse ohne Link öffnet, spielt ohne gemeinsame Bestenliste.
+
+**Script aktualisieren** (wenn sich `apps-script/Code.gs` geändert hat): Im Apps-Script-Fenster den Code ersetzen und speichern. Dann **Bereitstellen → Bereitstellungen verwalten**, beim Stift-Symbol **Version: Neue Version** wählen und **Bereitstellen**. Die URL bleibt gleich, im Spiel muss nichts geändert werden.
 
 Unpassende Spitznamen löschst du direkt im Sheet (Zeile löschen).
 
 ## Schritt 3: Eigene Variante erstellen
 
 1. Im Spiel auf **Für Lehrpersonen** tippen. Die Standard-PIN ist **1234**. Bitte unter **Allgemein → PIN ändern** eine eigene setzen.
+   Auf Geräten, die das Spiel über den Klassen-Link geöffnet haben, ist «Für Lehrpersonen» ausgeblendet. Dort erreichst du den Editor, indem du an die Adresse `#lehrperson` anhängst, z.B. `https://reneluechinger.github.io/finanzgame/#lehrperson`.
 2. Anpassen:
    - **Werte**: umbenennen, Symbol und Farbe ändern, neue Werte hinzufügen oder entfernen. Der Geld-Wert bleibt immer.
-   - **Aktivitäten**: Wirkung auf jeden Wert, Geld, wann sie möglich sind. Unter «Erweitert» lassen sich Aktivitäten freischalten (Beispiel: Babysitter-Kurs schaltet ab nächster Woche Babysitten frei).
+   - **Aktivitäten**: Wirkung auf jeden Wert, Geld, wann sie möglich sind. Mit dem Suchfeld findest du eine Aktivität schnell. «Immer anbieten» zeigt sie jeden Tag. Wie viele Aktivitäten pro Zeitfenster erscheinen, stellst du unter **Allgemein** ein. Unter «Erweitert» lassen sich Aktivitäten freischalten (Beispiel: Babysitter-Kurs schaltet ab nächster Woche Babysitten frei).
    - **Ereignisse**: Text und bis zu drei Wahlmöglichkeiten
    - **Kosten & Fragen**: laufende Kosten und die vier Reflexionsfragen
-3. **Speichern**, dann **Teilen → Link erzeugen**. Jede Variante hat eine eigene Bestenliste.
+3. **Speichern**, dann **Teilen → Link erzeugen**. Jeder Variantenname hat eine eigene Bestenliste. Für eine weitere Klasse also einfach den Namen ändern (z.B. «Klasse 3sb») und speichern. Bleibt der Name gleich, bleiben Spielstände und Bestenliste erhalten, auch wenn du Aktivitäten änderst.
 
 Hinweis: Änderungen wirken nur auf dem eigenen Gerät, bis du den neuen Link teilst. Der Link enthält die ganze Variante, darum ist er lang. Tipp: als QR-Code oder über die Schulplattform verteilen.
 
@@ -72,7 +75,8 @@ Reines HTML, CSS und JavaScript (ES-Module), keine Abhängigkeiten, kein Build-S
 ```
 index.html          Einstieg
 css/style.css       Gestaltung (Design «Balance»)
-js/config.js        Standard-Variante: Werte, Aktivitäten, Ereignisse, Zahlen
+js/config.js        Standard-Variante: Werte, Zahlen, die ersten Aktivitäten und Ereignisse
+js/content.js       weitere 185 Aktivitäten und 186 Ereignisse
 js/engine.js        Spiellogik ohne Oberfläche
 js/app.js           Bildschirme und Bedienung
 js/editor.js        Editor für Lehrpersonen
