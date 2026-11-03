@@ -10,12 +10,14 @@ const WHEN = [
 ];
 const TABS = [["allg", "Allgemein"], ["werte", "Werte"], ["akt", "Aktivitäten"], ["ev", "Ereignisse"], ["fragen", "Kosten & Fragen"], ["teilen", "Teilen"], ["json", "JSON"]];
 
+let savedName = "";
 let draft, tab = "allg", onSaveCb, root, dirty = false, openItem = null;
 
 export function renderEditor(el, cfg, onSave) {
   root = el;
   onSaveCb = onSave;
   draft = structuredClone(cfg);
+  savedName = cfg.name;
   dirty = false;
   render();
 }
@@ -51,6 +53,7 @@ function body() {
     <section class="card">
       <h2>Spiel</h2>
       ${txt("name", d.name, "Name der Variante (z.B. Klasse 3a)", "wide")}
+      <p class="small">Ein neuer Name ergibt eine neue Variante mit eigener Bestenliste. Bei gleichem Name bleiben Spielstände und Bestenliste erhalten.</p>
       <div class="grid3">
         ${num("startMoney", d.startMoney, "Startgeld (Fr.)")}
         ${num("pocketMoney", d.pocketMoney, "Taschengeld pro Woche (Fr.)")}
@@ -298,10 +301,16 @@ async function onClick(ev) {
     case "save": {
       const errors = S.validateConfig(cleanup(draft));
       if (errors.length) return msg(errors.join(" "), true);
+      // Neuer Name = neue Variante mit eigener Bestenliste (z.B. für eine weitere Klasse)
+      const renamed = draft.name !== savedName;
+      if (renamed) draft.vid = S.newVariantId();
       onSaveCb(structuredClone(draft));
+      savedName = draft.name;
       dirty = false;
       render();
-      msg("Gespeichert. Für die Klasse unter «Teilen» einen neuen Link erzeugen.");
+      msg(renamed
+        ? "Gespeichert als neue Variante mit eigener Bestenliste. Unter «Teilen» einen neuen Link erzeugen."
+        : "Gespeichert. Für die Klasse unter «Teilen» einen neuen Link erzeugen.");
       break;
     }
     case "pin": {

@@ -57,7 +57,7 @@ Unpassende Spitznamen löschst du direkt im Sheet (Zeile löschen).
    - **Aktivitäten**: Wirkung auf jeden Wert, Geld, wann sie möglich sind. Mit dem Suchfeld findest du eine Aktivität schnell. «Immer anbieten» zeigt sie jeden Tag. Wie viele Aktivitäten pro Zeitfenster erscheinen, stellst du unter **Allgemein** ein. Unter «Erweitert» lassen sich Aktivitäten freischalten (Beispiel: Babysitter-Kurs schaltet ab nächster Woche Babysitten frei).
    - **Ereignisse**: Text und bis zu drei Wahlmöglichkeiten
    - **Kosten & Fragen**: laufende Kosten und die vier Reflexionsfragen
-3. **Speichern**, dann **Teilen → Link erzeugen**. Jede Variante hat eine eigene Bestenliste.
+3. **Speichern**, dann **Teilen → Link erzeugen**. Jeder Variantenname hat eine eigene Bestenliste. Für eine weitere Klasse also einfach den Namen ändern (z.B. «Klasse 3sb») und speichern. Bleibt der Name gleich, bleiben Spielstände und Bestenliste erhalten, auch wenn du Aktivitäten änderst.
 
 Hinweis: Änderungen wirken nur auf dem eigenen Gerät, bis du den neuen Link teilst. Der Link enthält die ganze Variante, darum ist er lang. Tipp: als QR-Code oder über die Schulplattform verteilen.
 

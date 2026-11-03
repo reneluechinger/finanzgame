@@ -32,6 +32,11 @@ async function init() {
   }
   variant = S.variantId(cfg);
   state = S.loadGame(variant);
+  // Spielstände der Standard-Variante aus der Version vor November 2026 übernehmen
+  if (!state && variant === "std") {
+    const old = S.loadGame("26qer1");
+    if (old) { old.variant = "std"; state = old; S.saveGame(old); S.deleteGame("26qer1"); }
+  }
   route();
 }
 
@@ -300,19 +305,21 @@ function showFinal() {
 // Eintrag in die Bestenliste: automatisch am Monatsende, der Knopf dient nur für einen neuen Versuch
 let sending = false;
 async function submitRun() {
-  if (!state || state.status !== "done" || state.submitted || sending) return;
+  const run = state; // festhalten: während des Wartens kann ein neuer Monat beginnen
+  if (!run || run.status !== "done" || run.submitted || sending) return;
   sending = true;
   const btn = document.querySelector('[data-a="submit"]');
   if (btn) btn.disabled = true;
   const msgEl = document.getElementById("submit-msg");
   if (msgEl) msgEl.textContent = "Wird in die Bestenliste eingetragen …";
-  const last = state.history.at(-1);
-  const res = await submitScore(cfg, { name: state.nickname, score: last.score, variant, date: new Date().toISOString(), started: state.started, values: last.values });
+  const last = run.history.at(-1);
+  const res = await submitScore(cfg, { name: run.nickname, score: last.score, variant: run.variant, date: new Date().toISOString(), started: run.started, values: last.values });
   sending = false;
   // Nur als erledigt markieren, wenn der Eintrag angekommen ist (oder es nur die lokale Liste gibt)
-  if (res.online || !cfg.scriptUrl) state.submitted = true;
-  save();
-  if (!document.querySelector(".final")) return;
+  if (res.online || !cfg.scriptUrl) run.submitted = true;
+  // Hat inzwischen ein neuer Monat begonnen, bleibt dessen Spielstand unberührt
+  if (state === run) save();
+  if (state !== run || !document.querySelector(".final")) return;
   showFinal();
   document.getElementById("submit-msg").textContent = res.online
     ? "Eingetragen in die gemeinsame Bestenliste."

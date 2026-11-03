@@ -179,7 +179,8 @@ export function offeredActivities(cfg, state, slot) {
   const pool = cfg.activities.filter(a => a.when?.includes(key) && !(a.once && done(a.id)));
   const limit = cfg.offerCount || 0;
   if (!limit || pool.length <= limit) return pool;
-  const must = pool.filter(a => a.id === state.plan[slot] || a.core || (a.requires && flagActive(state, a.requires)));
+  // Die eigene Wahl beeinflusst die Auswahl nicht, sonst mischt sich die Liste beim Wählen neu
+  const must = pool.filter(a => a.core || (a.requires && flagActive(state, a.requires)));
   const rest = pool.filter(a => !must.includes(a));
   const rng = seededRng(`${state.started}|${state.day}|${slot}`);
   for (let i = rest.length - 1; i > 0; i--) {
@@ -192,6 +193,8 @@ export function offeredActivities(cfg, state, slot) {
     const free = pool.find(a => (a.money || 0) >= 0 && !a.requires);
     if (free) chosen.push(free);
   }
+  const picked = pool.find(a => a.id === state.plan[slot]);
+  if (picked && !chosen.includes(picked)) chosen.push(picked);
   return pool.filter(a => chosen.includes(a)); // Reihenfolge wie in der Liste
 }
 

@@ -86,3 +86,15 @@ test("Alle 200 Aktivitäten und 200 Ereignisse sind gültig", () => {
   const flags = new Set(cfg.activities.filter(a => a.grants).map(a => a.grants.flag));
   for (const a of cfg.activities) if (a.requires) assert.ok(flags.has(a.requires), a.id);
 });
+
+test("Die Auswahl bleibt gleich, wenn man etwas wählt", () => {
+  const st = E.newGame(cfg, "t", "x");
+  for (let day = 1; day <= 28; day++) {
+    st.day = day; st.plan = {};
+    for (const slot of E.slotsFor(day)) {
+      const before = E.offeredActivities(cfg, st, slot).map(a => a.id);
+      st.plan[slot] = before.at(-1);
+      assert.deepEqual(E.offeredActivities(cfg, st, slot).map(a => a.id), before);
+    }
+  }
+});

@@ -45,7 +45,14 @@ export const newVariantId = () => Math.random().toString(36).slice(2, 8);
 
 // --- Herkunft der Variante: über einen Link geöffnet (Lernende) ---
 export const setFromLink = v => set("fromLink", !!v);
-export const isFromLink = () => get("fromLink", false);
+// Geräte, die vor diesem Update eine Klassen-Variante gespeichert haben, gelten als Geräte von Lernenden.
+// Auf dem eigenen Gerät macht das Speichern im Editor den Zugang wieder sichtbar.
+export function isFromLink() {
+  const v = get("fromLink", null);
+  if (v !== null) return v;
+  const stored = get("config");
+  return !!stored && stored.vid !== "std" && !!stored.scriptUrl;
+}
 
 export const pinHash = pin => hash("finanzgame-pin:" + pin);
 export const checkPin = (cfg, pin) => pinHash(pin) === (cfg.pinHash || pinHash("1234"));
