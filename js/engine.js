@@ -159,6 +159,42 @@ export function activityStatus(cfg, state, act, slot) {
   return { ok: true };
 }
 
+// Kleiner Zufallsgenerator mit Startwert, damit die Auswahl eines Tages beim Neuladen gleich bleibt
+function seededRng(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+// Aktivitäten, die heute in diesem Zeitfenster angeboten werden.
+// Immer dabei: die gewählte, alle mit "core" und freigeschaltete (requires).
+// Der Rest wird pro Tag zufällig ergänzt, bis cfg.offerCount erreicht ist (0 = alle).
+export function offeredActivities(cfg, state, slot) {
+  const key = slotKey(state.day, slot);
+  const done = id => state.history.some(h => h.acts.includes(id));
+  const pool = cfg.activities.filter(a => a.when?.includes(key) && !(a.once && done(a.id)));
+  const limit = cfg.offerCount || 0;
+  if (!limit || pool.length <= limit) return pool;
+  const must = pool.filter(a => a.id === state.plan[slot] || a.core || (a.requires && flagActive(state, a.requires)));
+  const rest = pool.filter(a => !must.includes(a));
+  const rng = seededRng(`${state.started}|${state.day}|${slot}`);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  const chosen = [...must, ...rest.slice(0, Math.max(0, limit - must.length))];
+  // Mindestens eine Gratis-Aktivität ohne Bedingung, damit man nie feststeckt
+  if (!chosen.some(a => (a.money || 0) >= 0 && !a.requires)) {
+    const free = pool.find(a => (a.money || 0) >= 0 && !a.requires);
+    if (free) chosen.push(free);
+  }
+  return pool.filter(a => chosen.includes(a)); // Reihenfolge wie in der Liste
+}
+
 // Wendet Plan + tägliche Veränderung auf eine Kopie an (für Vorschau) oder auf den Zustand
 function simulateDay(cfg, state) {
   const tired = isTired(cfg, state);

@@ -30,6 +30,7 @@ function render() {
     <div id="ed-msg" class="msg"></div>
     <div class="ed-body">${body()}</div>
   </div>`;
+  applyFilter();
 }
 
 const num = (path, val, label, step = 1) =>
@@ -57,6 +58,7 @@ function body() {
         ${num("interestPercent", d.interestPercent, "Zins pro Woche (%)", 0.1)}
         ${num("lowEnergyLimit", d.lowEnergyLimit, "Müde unter Energie")}
         ${num("days", d.days, "Anzahl Tage (7, 14, 21, 28)", 7)}
+        ${num("offerCount", d.offerCount, "Aktivitäten pro Zeitfenster (0 = alle)")}
       </div>
       <h3>Was jeden Tag automatisch passiert</h3>
       <p class="small">Jeden Tag:</p>${driftInputs("everyDay")}
@@ -92,11 +94,12 @@ function body() {
   if (tab === "akt") return `
     <section class="card">
       <h2>Aktivitäten (${d.activities.length})</h2>
-      <p class="small">Effekte: ungefähr 5 = ↑, 10 = ↑↑. Geld in Franken, negative Zahl = kostet.</p>
+      <p class="small">Effekte: ungefähr 5 = ↑, 10 = ↑↑. Geld in Franken, negative Zahl = kostet. Pro Zeitfenster sehen die Lernenden eine tägliche Auswahl (Einstellung unter «Allgemein»). Mit «Immer anbieten» ist eine Aktivität jeden Tag dabei.</p>
+      ${filterBox()}
       ${d.activities.map((a, i) => `
         <details ${openItem === "a" + i ? "open" : ""} data-open="a${i}">
           <summary>${esc(a.icon)} ${esc(a.name)}</summary>
-          <div class="item">
+          ${openItem !== "a" + i ? "" : `<div class="item">
             <div class="grid3">${txt(`activities.${i}.icon`, a.icon, "Symbol")}${txt(`activities.${i}.name`, a.name, "Name")}${num(`activities.${i}.money`, a.money, "Geld (Fr.)")}</div>
             ${effectInputs(`activities.${i}`, a.effects)}
             <p class="small">Wann möglich?</p>
@@ -107,6 +110,7 @@ function body() {
                 ${txt(`activities.${i}.requires`, a.requires, "Braucht Merkmal")}
                 ${txt(`activities.${i}.lockedInfo`, a.lockedInfo, "Text, wenn gesperrt")}
                 ${chk(`activities.${i}.once`, a.once, "Nur einmal im Monat")}
+                ${chk(`activities.${i}.core`, a.core, "Immer anbieten")}
                 ${txt(`activities.${i}.grants.flag`, a.grants?.flag, "Gibt Merkmal")}
                 <label class="f"><span>Merkmal wirkt</span><select data-p="activities.${i}.grants.delay">
                   <option value="now" ${a.grants?.delay !== "nextWeek" ? "selected" : ""}>sofort</option>
@@ -116,7 +120,7 @@ function body() {
               <p class="small">Beispiel: «Babysitter-Kurs» gibt das Merkmal «babysitter» ab nächster Woche, «Babysitten» braucht es.</p>
             </details>
             <button class="btn danger" data-e="del-act" data-i="${i}">Aktivität löschen</button>
-          </div>
+          </div>`}
         </details>`).join("")}
       <button class="btn ghost" data-e="add-act">+ Aktivität hinzufügen</button>
     </section>`;
@@ -125,10 +129,11 @@ function body() {
     <section class="card">
       <h2>Ereignisse (${d.events.length})</h2>
       <p class="small">An etwa jedem zweiten Tag passiert ein Ereignis. Jedes kommt höchstens einmal pro Monat vor.</p>
+      ${filterBox()}
       ${d.events.map((e, i) => `
         <details ${openItem === "e" + i ? "open" : ""} data-open="e${i}">
           <summary>${esc(e.icon)} ${esc(e.text)}</summary>
-          <div class="item">
+          ${openItem !== "e" + i ? "" : `<div class="item">
             <div class="grid3">${txt(`events.${i}.icon`, e.icon, "Symbol")}${txt(`events.${i}.text`, e.text, "Text", "wide")}</div>
             <div class="grid3">${txt(`events.${i}.condition.flag`, e.condition?.flag, "Nur wenn Merkmal (optional)")}
               ${chk(`events.${i}.condition.not`, e.condition?.not, "… wenn Merkmal fehlt")}</div>
@@ -141,7 +146,7 @@ function body() {
               </div>`).join("")}
             ${e.options.length < 3 ? `<button class="btn ghost" data-e="add-opt" data-i="${i}">+ Wahl hinzufügen</button>` : ""}
             <button class="btn danger" data-e="del-ev" data-i="${i}">Ereignis löschen</button>
-          </div>
+          </div>`}
         </details>`).join("")}
       <button class="btn ghost" data-e="add-ev">+ Ereignis hinzufügen</button>
     </section>`;
@@ -183,6 +188,17 @@ function body() {
       <button class="btn primary" data-e="json">Übernehmen</button>
     </section>`;
   return "";
+}
+
+let filterText = "";
+function filterBox() {
+  return `<label class="f wide"><span>Suchen</span><input id="ed-filter" value="${esc(filterText)}" placeholder="Stichwort, z.B. Velo"></label>`;
+}
+function applyFilter() {
+  const q = filterText.toLowerCase();
+  root.querySelectorAll("details[data-open]").forEach(d => {
+    d.style.display = !q || d.querySelector("summary").textContent.toLowerCase().includes(q) ? "" : "none";
+  });
 }
 
 function driftInputs(key) {
@@ -263,12 +279,18 @@ function structural(fn) {
 
 async function onClick(ev) {
   const sum = ev.target.closest("summary");
-  if (sum) { const det = sum.parentElement; openItem = det.open ? null : det.dataset.open; }
+  if (sum) {
+    ev.preventDefault();
+    const det = sum.parentElement;
+    if (det.dataset.open) { openItem = det.open ? null : det.dataset.open; render(); return; }
+    det.open = !det.open; // innere Details (Erweitert) normal auf- und zuklappen
+    return;
+  }
   const el = ev.target.closest("[data-e]");
   if (!el) return;
   const i = Number(el.dataset.i), j = Number(el.dataset.j);
   switch (el.dataset.e) {
-    case "tab": tab = el.dataset.tab; openItem = null; render(); break;
+    case "tab": tab = el.dataset.tab; openItem = null; filterText = ""; render(); break;
     case "leave":
       if (dirty && !confirm("Ungespeicherte Änderungen verwerfen?")) return;
       location.hash = "";
@@ -344,7 +366,7 @@ async function onClick(ev) {
     }
     case "reset":
       if (!confirm("Alle Anpassungen verwerfen und die Standard-Variante laden? PIN und Bestenlisten-URL bleiben erhalten.")) return;
-      structural(() => { draft = { ...structuredClone(DEFAULT_CONFIG), pinHash: draft.pinHash, scriptUrl: draft.scriptUrl }; });
+      structural(() => { draft = { ...structuredClone(DEFAULT_CONFIG), pinHash: draft.pinHash, scriptUrl: draft.scriptUrl, vid: draft.vid, name: draft.name }; });
       msg("Standard geladen. Jetzt speichern.");
       break;
     case "json": {
@@ -376,6 +398,7 @@ async function onChange(ev) {
 }
 
 // Ereignisse einmalig am Dokument anmelden; sie wirken nur im Editor
+document.addEventListener("input", ev => { if (ev.target.id === "ed-filter") { filterText = ev.target.value; applyFilter(); } });
 document.addEventListener("input", ev => { if (root?.querySelector(".editor") && ev.target.dataset.p && ev.target.type !== "checkbox" && ev.target.tagName !== "SELECT") onInput(ev); });
 document.addEventListener("change", ev => { if (root?.querySelector(".editor") && (ev.target.type === "checkbox" || ev.target.tagName === "SELECT" || ev.target.type === "file")) onChange(ev); });
 document.addEventListener("click", ev => { if (root?.querySelector(".editor")) onClick(ev); });

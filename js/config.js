@@ -1,8 +1,12 @@
 // Standard-Variante von FinanzGame. Im Lehrpersonen-Editor anpassbar.
 // Effekte: Zahlen pro Wert-ID (ungefähr: + = 5, ++ = 10). "geld" ist Franken.
+import { EXTRA_ACTIVITIES, EXTRA_EVENTS } from "./content.js";
 
 export const DEFAULT_CONFIG = {
   name: "Standard",
+  vid: "std", // feste ID der Variante (Spielstände, Bestenliste)
+  contentVersion: 2, // bei neuen Standard-Inhalten erhöhen, ältere Varianten übernehmen sie
+  offerCount: 8, // so viele Aktivitäten werden pro Zeitfenster angeboten (0 = alle)
   pinHash: "", // leer = Standard-PIN 1234
   scriptUrl: "", // URL der Google-Apps-Script-Web-App für die Bestenliste
   days: 28,
@@ -43,7 +47,7 @@ export const DEFAULT_CONFIG = {
       effects: { zufriedenheit: 4, wertstiftung: 5, energie: -6, beziehungen: 2 }, info: "Zutaten kosten Fr. 10, Verkauf bringt Fr. 35." },
     { id: "tierheim", name: "Freiwillig im Tierheim", icon: "🐶", when: ["werktag-nachmittag", "wochenende-morgen", "wochenende-nachmittag"], money: 0,
       effects: { zufriedenheit: 4, wertstiftung: 10, energie: -6, beziehungen: 2 } },
-    { id: "familie", name: "Der Familie helfen", icon: "🍽️", when: ["werktag-nachmittag", "werktag-abend", "wochenende-morgen", "wochenende-nachmittag", "wochenende-abend"], money: 0,
+    { id: "familie", name: "Der Familie helfen", icon: "🍽️", core: true, when: ["werktag-nachmittag", "werktag-abend", "wochenende-morgen", "wochenende-nachmittag", "wochenende-abend"], money: 0,
       effects: { wertstiftung: 4, energie: -3, beziehungen: 8 } },
     { id: "lernen", name: "Für die Schule lernen", icon: "📖", when: ["werktag-nachmittag", "werktag-abend", "wochenende-nachmittag"], money: 0,
       effects: { zufriedenheit: 3, energie: -4 }, grants: { flag: "vorbereitet", delay: "now", duration: 4 },
@@ -54,12 +58,13 @@ export const DEFAULT_CONFIG = {
       effects: { zufriedenheit: 4, energie: 3, beziehungen: 3 } },
     { id: "gamen", name: "Gamen / Social Media", icon: "🎮", when: ["werktag-nachmittag", "werktag-abend", "wochenende-morgen", "wochenende-nachmittag", "wochenende-abend"], money: 0,
       effects: { zufriedenheit: 5, energie: -2, beziehungen: -2 } },
-    { id: "ausruhen", name: "Ausruhen", icon: "🛋️", when: ["werktag-nachmittag", "werktag-abend", "wochenende-morgen", "wochenende-nachmittag", "wochenende-abend"], money: 0,
+    { id: "ausruhen", name: "Ausruhen", icon: "🛋️", core: true, when: ["werktag-nachmittag", "werktag-abend", "wochenende-morgen", "wochenende-nachmittag", "wochenende-abend"], money: 0,
       effects: { zufriedenheit: 2, energie: 10 } },
     { id: "shoppen", name: "Shoppen", icon: "🛍️", when: ["werktag-nachmittag", "wochenende-nachmittag"], money: -30,
       effects: { zufriedenheit: 8 } },
     { id: "kino", name: "Kino mit dem Freundeskreis", icon: "🎬", when: ["werktag-abend", "wochenende-nachmittag", "wochenende-abend"], money: -18,
-      effects: { zufriedenheit: 6, beziehungen: 5 } }
+      effects: { zufriedenheit: 6, beziehungen: 5 } },
+    ...EXTRA_ACTIVITIES
   ],
   events: [
     { id: "display", icon: "📱", text: "Dein Handy fällt runter. Das Display ist gesprungen.", options: [
@@ -103,7 +108,8 @@ export const DEFAULT_CONFIG = {
       { label: "Absagen", effects: { beziehungen: -2 } } ] },
     { id: "velo", icon: "🚲", text: "Dein Velo hat einen Platten.", options: [
       { label: "Selbst flicken (Fr. 5)", money: -5, effects: { energie: -3, zufriedenheit: 3 } },
-      { label: "In die Werkstatt (Fr. 25)", money: -25 } ] }
+      { label: "In die Werkstatt (Fr. 25)", money: -25 } ] },
+    ...EXTRA_EVENTS
   ],
   questions: [
     "Welche Entscheidung hat dir diese Woche am meisten gebracht? Warum?",

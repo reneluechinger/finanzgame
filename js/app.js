@@ -24,6 +24,7 @@ async function init() {
       shared.pinHash = cfg.pinHash; // eigene PIN auf diesem Gerät behalten
       cfg = shared;
       S.saveConfig(cfg);
+      S.setFromLink(true); // Lernende sehen den Zugang für Lehrpersonen nicht
     } catch {
       alert("Der Link zur Spielvariante ist beschädigt. Es wird die gespeicherte Variante verwendet.");
     }
@@ -74,7 +75,7 @@ function showStart() {
       <button class="btn ghost" data-a="help">So funktioniert's</button>
       <button class="btn ghost" data-a="board">🏆 Bestenliste</button>
     </div>
-    <a class="teacher sans" href="#lehrperson">Für Lehrpersonen</a>
+    ${S.isFromLink() ? "" : `<a class="teacher sans" href="#lehrperson">Für Lehrpersonen</a>`}
   </div>`;
 }
 
@@ -93,7 +94,7 @@ function showGame() {
   const allSet = slots.every(s => state.plan[s]);
   const lowest = cfg.values.reduce((a, v) => (vals[v.id] < vals[a.id] ? v : a), cfg.values[0]);
 
-  const acts = cfg.activities.map(a => ({ a, st: E.activityStatus(cfg, state, a, activeSlot) })).filter(x => !x.st.hidden);
+  const acts = E.offeredActivities(cfg, state, activeSlot).map(a => ({ a, st: E.activityStatus(cfg, state, a, activeSlot) })).filter(x => !x.st.hidden);
 
   app.innerHTML = `
   <div class="screen game">
@@ -288,12 +289,34 @@ function showFinal() {
       </section>
     </div>
     <div class="row sans right noprint">
-      ${state.submitted ? `<span class="ok">✓ In der Bestenliste eingetragen</span>` : `<button class="btn ghost" data-a="submit">🏆 In Bestenliste eintragen</button>`}
+      ${state.submitted ? `<span class="ok">✓ In der Bestenliste eingetragen</span>` : `<button class="btn ghost" data-a="submit">🏆 Nochmals versuchen</button>`}
       <button class="btn ghost" data-a="print">Drucken / als PDF speichern</button>
       <button class="btn primary" data-a="new-confirm">Neuer Monat</button>
     </div>
     <p class="sans small noprint" id="submit-msg"></p>
   </div>`;
+}
+
+// Eintrag in die Bestenliste: automatisch am Monatsende, der Knopf dient nur für einen neuen Versuch
+let sending = false;
+async function submitRun() {
+  if (!state || state.status !== "done" || state.submitted || sending) return;
+  sending = true;
+  const btn = document.querySelector('[data-a="submit"]');
+  if (btn) btn.disabled = true;
+  const msgEl = document.getElementById("submit-msg");
+  if (msgEl) msgEl.textContent = "Wird in die Bestenliste eingetragen …";
+  const last = state.history.at(-1);
+  const res = await submitScore(cfg, { name: state.nickname, score: last.score, variant, date: new Date().toISOString(), started: state.started, values: last.values });
+  sending = false;
+  // Nur als erledigt markieren, wenn der Eintrag angekommen ist (oder es nur die lokale Liste gibt)
+  if (res.online || !cfg.scriptUrl) state.submitted = true;
+  save();
+  if (!document.querySelector(".final")) return;
+  showFinal();
+  document.getElementById("submit-msg").textContent = res.online
+    ? "Eingetragen in die gemeinsame Bestenliste."
+    : cfg.scriptUrl ? "Keine Verbindung zur gemeinsamen Liste. Tippe später auf «Nochmals versuchen»." : "Auf diesem Gerät gespeichert.";
 }
 
 // ---------- Bestenliste ----------
@@ -349,6 +372,7 @@ function showEditor() {
   }
   renderEditor(app, cfg, newCfg => {
     cfg = S.sanitizeConfig(newCfg);
+    S.setFromLink(false); // wer im Editor speichert, ist Lehrperson
     S.saveConfig(cfg);
     variant = S.variantId(cfg);
     state = S.loadGame(variant);
@@ -384,7 +408,11 @@ app.addEventListener("click", async ev => {
         showStart();
       }
       break;
-    case "continue": modal = state.event ? "event" : null; showGame(); break;
+    case "continue":
+      modal = state.event ? "event" : null;
+      showGame();
+      if (state.status === "done") submitRun(); // falls der Eintrag beim letzten Mal nicht ankam
+      break;
     case "home": location.hash = ""; showStart(); break;
     case "help": modal = null; showHelp(); break;
     case "board": showBoard(); break;
@@ -406,26 +434,12 @@ app.addEventListener("click", async ev => {
       E.endDay(cfg, state);
       if (state.status === "day") afterDayStart();
       else { save(); showGame(); window.scrollTo(0, 0); }
+      if (state.status === "done") submitRun(); // automatisch eintragen, ohne extra Knopf
       break;
     case "review-next": saveReflection(); E.continueAfterReview(cfg, state); afterDayStart(); break;
     case "review-pause": saveReflection(); save(); showStart(); break;
     case "print": saveReflection(); save(); window.print(); break;
-    case "submit": {
-      saveReflection();
-      const last = state.history.at(-1);
-      el.disabled = true;
-      const msg = document.getElementById("submit-msg");
-      msg.textContent = "Wird gesendet …";
-      const res = await submitScore(cfg, { name: state.nickname, score: last.score, variant, date: new Date().toISOString(), started: state.started, values: last.values });
-      // Nur als erledigt markieren, wenn der Eintrag angekommen ist (oder es nur die lokale Liste gibt)
-      if (res.online || !cfg.scriptUrl) state.submitted = true;
-      save();
-      showFinal();
-      document.getElementById("submit-msg").textContent = res.online
-        ? "Eingetragen in die gemeinsame Bestenliste."
-        : cfg.scriptUrl ? "Keine Verbindung zur gemeinsamen Liste. Auf diesem Gerät gespeichert, du kannst es später nochmals versuchen." : "Auf diesem Gerät gespeichert.";
-      break;
-    }
+    case "submit": saveReflection(); submitRun(); break;
     case "pin-reset":
       if (confirm("PIN auf 1234 zurücksetzen? Deine Variante bleibt erhalten. Die PIN gilt nur auf diesem Gerät.")) {
         cfg.pinHash = "";

@@ -1,7 +1,7 @@
 // Bestenliste: online über Google Apps Script, sonst lokal
 import { loadRuns, addRun } from "./storage.js";
 
-const TIMEOUT = 8000;
+const TIMEOUT = 25000; // Apps Script braucht beim ersten Aufruf manchmal lange
 
 function withTimeout(promise) {
   return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error("Zeitüberschreitung")), TIMEOUT))]);
